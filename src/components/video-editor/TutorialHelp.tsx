@@ -17,8 +17,22 @@ import { toast } from "sonner";
 
 const RECORDLY_ISSUES_URL = "https://github.com/webadderall/Recordly/issues";
 const RECORDLY_X_URL = "https://x.com/webadderall";
+const RECORDLY_DISCORD_URL = "https://discord.gg/gjHWDpvc";
 const CONTACT_EMAIL = "youngchen3442@gmail.com";
 export const APP_HEADER_ACTION_BUTTON_CLASS = "h-7 px-2 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200 transition-all gap-1.5";
+
+function DiscordIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			viewBox="0 0 24 24"
+			fill="currentColor"
+			aria-hidden="true"
+			className={className}
+		>
+			<path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.078.037 13.714 13.714 0 0 0-.608 1.249 18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.249.077.077 0 0 0-.079-.037 19.736 19.736 0 0 0-4.885 1.515.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.27 14.27 0 0 0 1.226-1.994.076.076 0 0 0-.041-.105 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .079.009c.12.1.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.04.106c.36.695.77 1.361 1.225 1.995a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .03-.055c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03ZM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.165 1.095 2.156 2.418 0 1.334-.955 2.419-2.156 2.419Zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.165 1.095 2.156 2.418 0 1.334-.946 2.419-2.156 2.419Z" />
+		</svg>
+	);
+}
 
 async function openExternalLink(url: string, errorMessage: string) {
 	try {
@@ -40,10 +54,11 @@ export function FeedbackDialog() {
 				<Button
 					variant="ghost"
 					size="sm"
-					className={APP_HEADER_ACTION_BUTTON_CLASS}
+					className={`${APP_HEADER_ACTION_BUTTON_CLASS} w-8 justify-center px-0`}
+					title={t("feedback.trigger", "Feedback")}
+					aria-label={t("feedback.trigger", "Feedback")}
 				>
 					<MessageSquareMore className="h-3.5 w-3.5" />
-					<span className="font-medium">{t("feedback.trigger", "Feedback")}</span>
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="max-w-lg bg-[#09090b] border-white/10 [&>button]:text-slate-400 [&>button:hover]:text-white">
@@ -129,10 +144,11 @@ export function KeyboardShortcutsDialog() {
 				<Button
 					variant="ghost"
 					size="sm"
-					className={APP_HEADER_ACTION_BUTTON_CLASS}
+					className={`${APP_HEADER_ACTION_BUTTON_CLASS} w-8 justify-center px-0`}
+					title={t("keyboardShortcuts.trigger", "Shortcuts")}
+					aria-label={t("keyboardShortcuts.trigger", "Shortcuts")}
 				>
 					<Keyboard className="h-3.5 w-3.5" />
-					<span className="font-medium">{t("keyboardShortcuts.trigger", "Shortcuts")}</span>
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="max-w-lg bg-[#09090b] border-white/10 [&>button]:text-slate-400 [&>button:hover]:text-white">
@@ -189,6 +205,24 @@ export function KeyboardShortcutsDialog() {
 				</div>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+export function DiscordButton() {
+	const t = useScopedT("editor");
+
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			size="sm"
+			onClick={() => void openExternalLink(RECORDLY_DISCORD_URL, t("feedback.openFailed", "Failed to open link."))}
+			className={`${APP_HEADER_ACTION_BUTTON_CLASS} w-8 justify-center px-0 text-white hover:text-white`}
+			title={t("common.app.discord", "Join Discord")}
+			aria-label={t("common.app.discord", "Join Discord")}
+		>
+			<DiscordIcon className="h-3.5 w-3.5" />
+		</Button>
 	);
 }
 

@@ -115,6 +115,10 @@ function Separator() {
 	return <div className={styles.sep} />;
 }
 
+function DropdownSeparator() {
+	return <div className={styles.ddSeparator} />;
+}
+
 function MicDeviceRow({
 	device,
 	selected,
@@ -850,7 +854,7 @@ export function LaunchWindow() {
 											? t("recording.disableSystemAudio")
 											: t("recording.enableSystemAudio")}
 									</DropdownItem>
-											<Separator />
+										<DropdownSeparator />
 									{microphoneEnabled && (
 										<DropdownItem
 											icon={<MicOff size={16} />}
