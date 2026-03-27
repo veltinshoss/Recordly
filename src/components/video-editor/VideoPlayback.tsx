@@ -9,10 +9,13 @@ import {
   useCallback,
 } from "react";
 import { getAssetPath, getRenderableAssetUrl } from "@/lib/assetPath";
+import type { SceneFrameLayout } from "@/lib/sceneFrames";
+import { resolveMediaElementSource } from "@/lib/exporter/localMediaSource";
 import { clampMediaTimeToDuration } from "@/lib/mediaTiming";
 import {
   DEFAULT_WALLPAPER_PATH,
   DEFAULT_WALLPAPER_RELATIVE_PATH,
+  isVideoWallpaperSource,
 } from "@/lib/wallpapers";
 import {
   Application,
@@ -89,6 +92,10 @@ import {
   DEFAULT_CONNECTED_ZOOM_DURATION_MS,
   DEFAULT_CONNECTED_ZOOM_EASING,
   DEFAULT_CONNECTED_ZOOM_GAP_MS,
+  DEFAULT_SCENE_FRAME_OPACITY,
+  DEFAULT_SCENE_FRAME_STYLE,
+  DEFAULT_SCENE_FRAME_TEXT,
+  DEFAULT_SCENE_FRAME_THICKNESS,
   DEFAULT_WEBCAM_CORNER_RADIUS,
   DEFAULT_WEBCAM_REACT_TO_ZOOM,
   DEFAULT_WEBCAM_SHADOW,
@@ -99,6 +106,7 @@ import {
   DEFAULT_ZOOM_OUT_DURATION_MS,
   DEFAULT_ZOOM_OUT_EASING,
   getDefaultCaptionFontFamily,
+  type SceneFrameStyle,
 } from "./types";
 import { getWebcamOverlayPosition, getWebcamOverlaySizePx } from "./webcamOverlay";
 import { getSquircleSvgPath } from "@/lib/geometry/squircle";
@@ -171,6 +179,10 @@ interface VideoPlaybackProps {
   zoomInEasing?: ZoomTransitionEasing;
   zoomOutEasing?: ZoomTransitionEasing;
   connectedZoomEasing?: ZoomTransitionEasing;
+  sceneFrameStyle?: SceneFrameStyle;
+  sceneFrameText?: string;
+  sceneFrameOpacity?: number;
+  sceneFrameThickness?: number;
   borderRadius?: number;
   padding?: number;
   cropRegion?: import("./types").CropRegion;
@@ -243,6 +255,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       zoomInEasing = DEFAULT_ZOOM_IN_EASING,
       zoomOutEasing = DEFAULT_ZOOM_OUT_EASING,
       connectedZoomEasing = DEFAULT_CONNECTED_ZOOM_EASING,
+      sceneFrameStyle = DEFAULT_SCENE_FRAME_STYLE,
+      sceneFrameText = DEFAULT_SCENE_FRAME_TEXT,
+      sceneFrameOpacity = DEFAULT_SCENE_FRAME_OPACITY,
+      sceneFrameThickness = DEFAULT_SCENE_FRAME_THICKNESS,
       borderRadius = 0,
       padding = 50,
       cropRegion,
@@ -287,6 +303,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
     const webcamBubbleRef = useRef<HTMLDivElement | null>(null);
     const webcamBubbleInnerRef = useRef<HTMLDivElement | null>(null);
     const captionBoxRef = useRef<HTMLDivElement | null>(null);
+    const [sceneFrameLayout, setSceneFrameLayout] = useState<SceneFrameLayout | null>(null);
     const currentTimeRef = useRef(0);
     const zoomRegionsRef = useRef<ZoomRegion[]>([]);
     const selectedZoomIdRef = useRef<string | null>(null);
@@ -546,6 +563,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
         videoElement,
         cropRegion,
         lockedVideoDimensions: lockedVideoDimensionsRef.current,
+        sceneFrameStyle,
+        sceneFrameThickness,
         borderRadius,
         padding,
       });
@@ -557,6 +576,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
         baseOffsetRef.current = result.baseOffset;
         baseMaskRef.current = result.maskRect;
         cropBoundsRef.current = result.cropBounds;
+        setSceneFrameLayout(result.sceneFrameLayout);
 
         // Reset camera container to identity
         cameraContainer.scale.set(1);
@@ -571,8 +591,18 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
         updateOverlayForRegion(activeRegion);
         applyWebcamBubbleLayout(animationStateRef.current.appliedScale || 1);
+      } else {
+        setSceneFrameLayout(null);
       }
-    }, [updateOverlayForRegion, cropRegion, borderRadius, padding, applyWebcamBubbleLayout]);
+    }, [
+      updateOverlayForRegion,
+      cropRegion,
+      sceneFrameStyle,
+      sceneFrameThickness,
+      borderRadius,
+      padding,
+      applyWebcamBubbleLayout,
+    ]);
 
     useEffect(() => {
       const video = videoRef.current;
@@ -945,7 +975,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       }
 
       const targetTime = clampMediaTimeToDuration(
-        currentTime,
+        Math.max(0, currentTime - (webcam.timeOffsetMs ?? 0) / 1000),
         Number.isFinite(webcamVideo.duration) ? webcamVideo.duration : null,
       );
 
@@ -1464,17 +1494,22 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       videoReadyRafRef.current = requestAnimationFrame(waitForRenderableFrame);
     };
 
-    const [resolvedWallpaper, setResolvedWallpaper] = useState<string | null>(
-      null,
-    );
+    const [resolvedWallpaper, setResolvedWallpaper] = useState<string | null>(null);
+    const [resolvedWallpaperKind, setResolvedWallpaperKind] = useState<
+      "image" | "video" | "style"
+    >("image");
 
     useEffect(() => {
       let mounted = true;
+      let revokeResolvedWallpaper = () => {};
       (async () => {
         try {
           if (!wallpaper) {
             const def = await getAssetPath(DEFAULT_WALLPAPER_RELATIVE_PATH);
-            if (mounted) setResolvedWallpaper(def);
+            if (mounted) {
+              setResolvedWallpaper(def);
+              setResolvedWallpaperKind("image");
+            }
             return;
           }
 
@@ -1483,13 +1518,29 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
             wallpaper.startsWith("linear-gradient") ||
             wallpaper.startsWith("radial-gradient")
           ) {
-            if (mounted) setResolvedWallpaper(wallpaper);
+            if (mounted) {
+              setResolvedWallpaper(wallpaper);
+              setResolvedWallpaperKind("style");
+            }
+            return;
+          }
+
+          if (isVideoWallpaperSource(wallpaper)) {
+            const resolved = await resolveMediaElementSource(wallpaper);
+            revokeResolvedWallpaper = resolved.revoke;
+            if (mounted) {
+              setResolvedWallpaper(resolved.src);
+              setResolvedWallpaperKind("video");
+            }
             return;
           }
 
           // If it's a data URL (custom uploaded image), use as-is
           if (wallpaper.startsWith("data:")) {
-            if (mounted) setResolvedWallpaper(wallpaper);
+            if (mounted) {
+              setResolvedWallpaper(wallpaper);
+              setResolvedWallpaperKind("image");
+            }
             return;
           }
 
@@ -1499,20 +1550,31 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
             wallpaper.startsWith("/")
           ) {
             const renderable = await getRenderableAssetUrl(wallpaper);
-            if (mounted) setResolvedWallpaper(renderable);
+            if (mounted) {
+              setResolvedWallpaper(renderable);
+              setResolvedWallpaperKind("image");
+            }
             return;
           }
           const p = await getRenderableAssetUrl(
             await getAssetPath(wallpaper.replace(/^\//, "")),
           );
-          if (mounted) setResolvedWallpaper(p);
+          if (mounted) {
+            setResolvedWallpaper(p);
+            setResolvedWallpaperKind("image");
+          }
         } catch (err) {
-          if (mounted)
+          if (mounted) {
             setResolvedWallpaper(wallpaper || DEFAULT_WALLPAPER_PATH);
+            setResolvedWallpaperKind(
+              isVideoWallpaperSource(wallpaper || "") ? "video" : "image",
+            );
+          }
         }
       })();
       return () => {
         mounted = false;
+        revokeResolvedWallpaper();
       };
     }, [wallpaper]);
 
@@ -1525,7 +1587,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       };
     }, []);
 
-    const isImageUrl = Boolean(
+    const isImageUrl = resolvedWallpaperKind === "image" && Boolean(
       resolvedWallpaper &&
       (resolvedWallpaper.startsWith("file://") ||
         resolvedWallpaper.startsWith("http") ||
@@ -1563,13 +1625,121 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
         }}
       >
         {/* Background layer */}
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            ...backgroundStyle,
-            filter: backgroundBlur > 0 ? `blur(${backgroundBlur}px)` : "none",
-          }}
-        />
+        {resolvedWallpaperKind === "video" && resolvedWallpaper ? (
+          <video
+            key={resolvedWallpaper}
+            className="absolute inset-0 h-full w-full object-cover"
+            src={resolvedWallpaper}
+            muted
+            loop
+            autoPlay
+            playsInline
+            style={{
+              filter: backgroundBlur > 0 ? `blur(${backgroundBlur}px)` : "none",
+            }}
+          />
+        ) : (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              ...backgroundStyle,
+              filter: backgroundBlur > 0 ? `blur(${backgroundBlur}px)` : "none",
+            }}
+          />
+        )}
+        {sceneFrameLayout?.style === "safari" && sceneFrameLayout.toolbarRect ? (
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              left: `${sceneFrameLayout.frameRect.x}px`,
+              top: `${sceneFrameLayout.frameRect.y}px`,
+              width: `${sceneFrameLayout.frameRect.width}px`,
+              height: `${sceneFrameLayout.frameRect.height}px`,
+              borderRadius: `${sceneFrameLayout.frameRadius}px`,
+              border: "1px solid rgba(226, 232, 240, 0.95)",
+              background: "rgb(248, 250, 252)",
+              boxShadow:
+                showShadow && shadowIntensity > 0
+                  ? `0 ${shadowIntensity * 18}px ${shadowIntensity * 56}px rgba(15, 23, 42, ${0.16 + shadowIntensity * 0.18})`
+                  : "0 12px 28px rgba(15, 23, 42, 0.16)",
+            }}
+          >
+            <div
+              className="absolute flex items-center"
+              style={{
+                left: `${sceneFrameLayout.toolbarRect!.x - sceneFrameLayout.frameRect.x}px`,
+                top: `${sceneFrameLayout.toolbarRect!.y - sceneFrameLayout.frameRect.y}px`,
+                width: `${sceneFrameLayout.toolbarRect!.width}px`,
+                height: `${sceneFrameLayout.toolbarRect!.height}px`,
+                padding: `0 ${Math.max(10, sceneFrameLayout.toolbarRect!.height * 0.3)}px`,
+                gap: `${Math.max(8, sceneFrameLayout.toolbarRect!.height * 0.18)}px`,
+              }}
+            >
+              <div className="flex items-center gap-1.5">
+                {["#ff5f57", "#febc2e", "#28c840"].map((color) => (
+                  <span
+                    key={color}
+                    className="block rounded-full"
+                    style={{
+                      width: `${Math.max(9, sceneFrameLayout.toolbarRect!.height * 0.28)}px`,
+                      height: `${Math.max(9, sceneFrameLayout.toolbarRect!.height * 0.28)}px`,
+                      background: color,
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="ml-1 flex items-center gap-1.5 text-slate-500">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="M7.5 2.5 4 6l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="m4.5 2.5 3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div
+                className="min-w-0 flex-1 rounded-full border text-center text-slate-600"
+                style={{
+                  background: "rgba(255,255,255,0.96)",
+                  borderColor: "rgba(148, 163, 184, 0.18)",
+                  height: `${Math.max(24, sceneFrameLayout.toolbarRect!.height * 0.62)}px`,
+                  lineHeight: `${Math.max(24, sceneFrameLayout.toolbarRect!.height * 0.62)}px`,
+                  fontSize: `${Math.max(11, sceneFrameLayout.toolbarRect!.height * 0.28)}px`,
+                  padding: "0 12px",
+                }}
+              >
+                <span className="block truncate">{sceneFrameText || DEFAULT_SCENE_FRAME_TEXT}</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-500">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M4.25 7.75 8 4M6 4h2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="2.5" y="2.5" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.2" opacity="0.55" />
+                </svg>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                  <circle cx="2.25" cy="6" r="1.1" />
+                  <circle cx="6" cy="6" r="1.1" />
+                  <circle cx="9.75" cy="6" r="1.1" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {sceneFrameLayout?.style === "glass" ? (
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              left: `${sceneFrameLayout.contentRect.x - sceneFrameLayout.glassStrokeWidth / 2}px`,
+              top: `${sceneFrameLayout.contentRect.y - sceneFrameLayout.glassStrokeWidth / 2}px`,
+              width: `${sceneFrameLayout.contentRect.width + sceneFrameLayout.glassStrokeWidth}px`,
+              height: `${sceneFrameLayout.contentRect.height + sceneFrameLayout.glassStrokeWidth}px`,
+              borderRadius: `${sceneFrameLayout.contentRadius + sceneFrameLayout.glassStrokeWidth * 1.15}px`,
+              border: `${sceneFrameLayout.glassStrokeWidth}px solid rgba(255, 255, 255, ${sceneFrameOpacity})`,
+              boxShadow: `0 12px 30px rgba(15,23,42,0.12)`,
+            }}
+          />
+        ) : null}
         <div
           ref={containerRef}
           className="absolute inset-0"
