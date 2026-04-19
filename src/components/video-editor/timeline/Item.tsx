@@ -24,6 +24,7 @@ interface ItemProps {
 	zoomMode?: "auto" | "manual";
 	speedValue?: number;
 	variant?: "zoom" | "trim" | "clip" | "annotation" | "speed" | "audio";
+	backgroundLayer?: React.ReactNode;
 }
 
 // Map zoom depth to multiplier labels
@@ -57,6 +58,7 @@ export default function Item({
 	speedValue,
 	variant = "zoom",
 	children,
+	backgroundLayer,
 }: ItemProps) {
 	const { setNodeRef, attributes, listeners, itemStyle, itemContentStyle } = useItem({
 		id,
@@ -130,6 +132,11 @@ export default function Item({
 						onSelect?.();
 					}}
 				>
+					{backgroundLayer && (
+						<div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
+							{backgroundLayer}
+						</div>
+					)}
 					<div
 						className={cn(glassStyles.zoomEndCap, glassStyles.left)}
 						style={{ cursor: "col-resize", pointerEvents: "auto" }}

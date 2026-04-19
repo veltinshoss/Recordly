@@ -309,7 +309,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-merged-metadata
-          path: release-assets/merged/latest-mac.yml
+          path: release-assets/merged/*.yml
           if-no-files-found: error
 
   build-windows-x64:

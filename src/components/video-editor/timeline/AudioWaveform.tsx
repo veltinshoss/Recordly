@@ -1,22 +1,21 @@
-import { useTimelineContext } from "dnd-timeline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AudioPeaksData } from "./useAudioPeaks";
 
 interface AudioWaveformProps {
 	peaks: AudioPeaksData;
+	timeStartMs: number;
+	timeEndMs: number;
 }
 
 /**
- * Renders an audio waveform as a canvas that fills its parent container.
- * Automatically syncs with the timeline's visible range so the waveform
- * scrolls and zooms together with the clip items above it.
+ * Renders an audio waveform canvas clipped to a single clip item.
+ * Maps pixels to [timeStartMs, timeEndMs] so the waveform aligns
+ * with the clip's position on the timeline.
  */
-export default function AudioWaveform({ peaks }: AudioWaveformProps) {
+export default function AudioWaveform({ peaks, timeStartMs, timeEndMs }: AudioWaveformProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const { range } = useTimelineContext();
 	const [resizeKey, setResizeKey] = useState(0);
 
-	// Bump resizeKey when the canvas element changes size.
 	const observerRef = useRef<ResizeObserver | null>(null);
 	const setCanvasRef = useCallback((node: HTMLCanvasElement | null) => {
 		if (observerRef.current) {
@@ -29,6 +28,13 @@ export default function AudioWaveform({ peaks }: AudioWaveformProps) {
 			ro.observe(node);
 			observerRef.current = ro;
 		}
+	}, []);
+
+	// Force a redraw after initial mount to handle cases where
+	// ResizeObserver fires before layout is complete
+	useEffect(() => {
+		const id = requestAnimationFrame(() => setResizeKey((k) => k + 1));
+		return () => cancelAnimationFrame(id);
 	}, []);
 
 	useEffect(() => {
@@ -53,16 +59,14 @@ export default function AudioWaveform({ peaks }: AudioWaveformProps) {
 		const { peaks: peakData, durationMs } = peaks;
 		if (durationMs <= 0 || peakData.length === 0) return;
 
-		const visibleStartMs = range.start;
-		const visibleEndMs = range.end;
-		const visibleDurationMs = visibleEndMs - visibleStartMs;
-		if (visibleDurationMs <= 0) return;
+		const clipDurationMs = timeEndMs - timeStartMs;
+		if (clipDurationMs <= 0) return;
 
 		const midY = height / 2;
 
 		ctx.beginPath();
 		for (let px = 0; px < width; px++) {
-			const t = visibleStartMs + (px / width) * visibleDurationMs;
+			const t = timeStartMs + (px / width) * clipDurationMs;
 			const binIndex = Math.min(
 				peakData.length - 1,
 				Math.max(0, Math.floor((t / durationMs) * peakData.length)),
@@ -77,7 +81,7 @@ export default function AudioWaveform({ peaks }: AudioWaveformProps) {
 		ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
 		ctx.lineWidth = dpr;
 		ctx.stroke();
-	}, [peaks, range.start, range.end, resizeKey]);
+	}, [peaks, timeStartMs, timeEndMs, resizeKey]);
 
 	return (
 		<canvas
