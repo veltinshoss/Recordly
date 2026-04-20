@@ -210,26 +210,32 @@ export function useEditorExport({
 	const handleRetrySaveExport = useCallback(async () => {
 		const pendingSave = pendingExportSaveRef.current;
 		if (!pendingSave) return;
-		const saveResult = await window.electronAPI.saveExportedVideo(
-			pendingSave.arrayBuffer,
-			pendingSave.fileName,
-		);
-		if (saveResult.canceled) {
-			setExportError("Save dialog canceled. Click Save Again to save without re-rendering.");
-			toast.info("Save canceled. You can try again.");
-			return;
+		try {
+			const saveResult = await window.electronAPI.saveExportedVideo(
+				pendingSave.arrayBuffer,
+				pendingSave.fileName,
+			);
+			if (saveResult.canceled) {
+				setExportError("Save dialog canceled. Click Save Again to save without re-rendering.");
+				toast.info("Save canceled. You can try again.");
+				return;
+			}
+			if (saveResult.success && saveResult.path) {
+				clearPendingExportSave();
+				setExportError(null);
+				setExportedFilePath(saveResult.path);
+				showExportSuccessToast(saveResult.path);
+				setShowExportDropdown(true);
+				return;
+			}
+			const errorMessage = saveResult.message || "Failed to save video";
+			setExportError(errorMessage);
+			toast.error(errorMessage);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : "Failed to save video";
+			setExportError(errorMessage);
+			toast.error(errorMessage);
 		}
-		if (saveResult.success && saveResult.path) {
-			clearPendingExportSave();
-			setExportError(null);
-			setExportedFilePath(saveResult.path);
-			showExportSuccessToast(saveResult.path);
-			setShowExportDropdown(true);
-			return;
-		}
-		const errorMessage = saveResult.message || "Failed to save video";
-		setExportError(errorMessage);
-		toast.error(errorMessage);
 	}, [clearPendingExportSave, showExportSuccessToast]);
 
 	// Export status derived values

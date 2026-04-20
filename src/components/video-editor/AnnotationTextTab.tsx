@@ -59,7 +59,7 @@ export function AnnotationTextTab({
 					{t("annotations.textContent")}
 				</label>
 				<textarea
-					value={annotation.textContent || annotation.content}
+					value={annotation.textContent ?? annotation.content ?? ""}
 					onChange={(event) => onContentChange(event.target.value)}
 					placeholder={t("annotations.textPlaceholder")}
 					rows={5}

@@ -98,10 +98,12 @@ export async function runEditorExport({
 		setExportProgress,
 	);
 	let keepExportDialogOpen = false;
+	let wasPlaying = false;
+	let restoreTime: number | null = null;
 
 	try {
-		const wasPlaying = config.isPlaying;
-		const restoreTime = video.currentTime;
+		wasPlaying = config.isPlaying;
+		restoreTime = video.currentTime;
 		if (wasPlaying) {
 			videoPlaybackRef.current?.pause();
 		}
@@ -442,11 +444,6 @@ export async function runEditorExport({
 			}
 		}
 
-		if (wasPlaying) {
-			videoPlaybackRef.current?.play();
-		} else {
-			video.currentTime = restoreTime;
-		}
 	} catch (error) {
 		console.error("Export error:", error);
 		const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -468,6 +465,13 @@ export async function runEditorExport({
 		setExportError(errorMessage);
 		toast.error(`Export failed: ${summarizeErrorMessage(errorMessage)}`);
 	} finally {
+		if (restoreTime !== null) {
+			if (wasPlaying) {
+				videoPlaybackRef.current?.play();
+			} else {
+				video.currentTime = restoreTime;
+			}
+		}
 		extensionHost.emitEvent({ type: "export:complete" });
 		setIsExporting(false);
 		exporterRef.current = null;

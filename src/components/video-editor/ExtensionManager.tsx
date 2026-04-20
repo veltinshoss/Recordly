@@ -143,6 +143,10 @@ export default function ExtensionManager() {
 						description: result.error,
 					});
 				}
+			} catch (error) {
+					toast.error(t("toast.marketplaceInstallFailed", undefined, { name: extension.name }), {
+						description: error instanceof Error ? error.message : undefined,
+					});
 			} finally {
 				setInstallingIds((previous) => {
 					const next = new Set(previous);
