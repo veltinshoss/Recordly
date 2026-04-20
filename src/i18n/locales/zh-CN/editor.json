@@ -43,8 +43,8 @@
 		"blurStrength": "模糊强度: {{strength}}",
 		"solidColor": "纯色 (审查)",
 		"borderRadius": "边框半径",
-		"customFonts": "Custom Fonts",
-		"color": "Color"
+		"customFonts": "自定义字体",
+		"color": "颜色"
 	},
 
 	"fontStyles": {

@@ -44,8 +44,8 @@
 		"blurStrength": "Vervagingssterkte: {{strength}}",
 		"solidColor": "Effen Kleur (Censuur)",
 		"borderRadius": "Hoekradius",
-		"customFonts": "Custom Fonts",
-		"color": "Color"
+		"customFonts": "Aangepaste Lettertypen",
+		"color": "Kleur"
 	},
 
 	"fontStyles": {

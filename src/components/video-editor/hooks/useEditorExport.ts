@@ -191,16 +191,14 @@ export function useEditorExport({
 	}, [getRenderConfig, videoPlaybackRef, handleExport]);
 
 	const handleCancelExport = useCallback(() => {
-		if (exporterRef.current) {
-			exporterRef.current.cancel();
-			toast.info("Export canceled");
-			clearPendingExportSave();
-			setShowExportDropdown(false);
-			setIsExporting(false);
-			setExportProgress(null);
-			setExportError(null);
-			setExportedFilePath(undefined);
-		}
+		exporterRef.current?.cancel();
+		toast.info("Export canceled");
+		clearPendingExportSave();
+		setShowExportDropdown(false);
+		setIsExporting(false);
+		setExportProgress(null);
+		setExportError(null);
+		setExportedFilePath(undefined);
 	}, [clearPendingExportSave]);
 
 	const handleExportDropdownClose = useCallback(() => {

@@ -44,8 +44,8 @@
 		"blurStrength": "블러 강도: {{strength}}",
 		"solidColor": "단색 (검열)",
 		"borderRadius": "테두리 반경",
-		"customFonts": "Custom Fonts",
-		"color": "Color"
+		"customFonts": "커스텀 글꼴",
+		"color": "색상"
 	},
 
 	"fontStyles": {

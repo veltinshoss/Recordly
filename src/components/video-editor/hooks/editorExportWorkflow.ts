@@ -254,6 +254,7 @@ export async function runEditorExport({
 					window.close();
 					return;
 				}
+				keepExportDialogOpen = true;
 			}
 		} else {
 			const quality = settings.quality ?? config.exportQuality;
@@ -478,6 +479,7 @@ export async function runEditorExport({
 					window.close();
 					return;
 				}
+				keepExportDialogOpen = true;
 			}
 		}
 
@@ -501,6 +503,9 @@ export async function runEditorExport({
 		}
 		setExportError(errorMessage);
 		toast.error(`Export failed: ${summarizeErrorMessage(errorMessage)}`);
+		if (!smokeExportConfig.enabled) {
+			keepExportDialogOpen = true;
+		}
 	} finally {
 		if (restoreTime !== null) {
 			if (wasPlaying) {

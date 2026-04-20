@@ -51,7 +51,7 @@ export function fromFileUrl(fileUrl: string): string {
 		}
 
 		if (/^\/[A-Za-z]:/.test(pathname)) {
-			return pathname.slice(1);
+			return pathname.slice(1).replace(/\//g, "\\");
 		}
 
 		return pathname;
@@ -63,7 +63,9 @@ export function fromFileUrl(fileUrl: string): string {
 		} catch {
 			// Keep raw best-effort path if percent decoding fails.
 		}
-		return fallbackPath.replace(/^\/([a-zA-Z]:)/, "$1");
+		const nativePath = fallbackPath.replace(/^\/([a-zA-Z]:)/, "$1");
+		// Convert forward slashes to backslashes only for Windows drive paths
+		return /^[a-zA-Z]:/.test(nativePath) ? nativePath.replace(/\//g, "\\") : nativePath;
 	}
 }
 
