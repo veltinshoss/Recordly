@@ -85,11 +85,12 @@ export function EditorSidebar({
 					const isActive = prefs.activeEffectSection === section.id;
 					return (
 						<div key={section.id} className="flex items-center">
+							{/* Intentionally removes default focus-visible ring — UI decision to avoid ugly yellow selection ring */}
 							<motion.button
 								type="button"
 								onClick={() => prefs.setActiveEffectSection(section.id)}
 								title={section.label}
-								className="group relative flex h-9 w-9 items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/50 focus-visible:ring-offset-1"
+								className="group relative flex h-9 w-9 items-center justify-center rounded-lg outline-none focus:outline-none focus-visible:outline-none"
 								animate={{ opacity: isActive ? 1 : 0.55 }}
 								transition={{ duration: 0.14 }}
 							>
