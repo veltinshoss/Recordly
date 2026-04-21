@@ -1,4 +1,4 @@
-import { useEffect, type MutableRefObject } from "react";
+import { useEffect, useRef, type MutableRefObject } from "react";
 import { toast } from "sonner";
 import type { ScreenRecorderRefs } from "./shared";
 
@@ -16,67 +16,71 @@ type UseScreenRecorderLifecycleOptions = {
 };
 
 export function useScreenRecorderLifecycle(options: UseScreenRecorderLifecycleOptions) {
+	const optionsRef = useRef(options);
+	optionsRef.current = options;
+
 	useEffect(() => {
 		void (async () => {
 			const platform = await window.electronAPI.getPlatform();
-			options.setIsMacOS(platform === "darwin");
+			optionsRef.current.setIsMacOS(platform === "darwin");
 		})();
-	}, [options]);
+	}, []);
 
 	useEffect(() => {
-		if (options.refs.countdownDelayLoaded.current) return;
-		options.refs.countdownDelayLoaded.current = true;
+		if (optionsRef.current.refs.countdownDelayLoaded.current) return;
+		optionsRef.current.refs.countdownDelayLoaded.current = true;
 
 		void (async () => {
 			const result = await window.electronAPI.getCountdownDelay();
 			if (result.success && typeof result.delay === "number") {
-				options.setCountdownDelayState(result.delay);
+				optionsRef.current.setCountdownDelayState(result.delay);
 			}
 		})();
-	}, [options]);
+	}, []);
 
 	useEffect(() => {
-		if (options.refs.recordingPrefsLoaded.current) return;
-		options.refs.recordingPrefsLoaded.current = true;
+		if (optionsRef.current.refs.recordingPrefsLoaded.current) return;
+		optionsRef.current.refs.recordingPrefsLoaded.current = true;
 
 		void (async () => {
 			const result = await window.electronAPI.getRecordingPreferences();
 			if (result.success) {
-				options.setMicrophoneEnabled(result.microphoneEnabled);
+				optionsRef.current.setMicrophoneEnabled(result.microphoneEnabled);
 				if (result.microphoneDeviceId) {
-					options.setMicrophoneDeviceId(result.microphoneDeviceId);
+					optionsRef.current.setMicrophoneDeviceId(result.microphoneDeviceId);
 				}
-				options.setSystemAudioEnabled(result.systemAudioEnabled);
+				optionsRef.current.setSystemAudioEnabled(result.systemAudioEnabled);
 			}
 		})();
-	}, [options]);
+	}, []);
 
 	useEffect(() => {
 		let cleanup: (() => void) | undefined;
 
 		if (window.electronAPI?.onStopRecordingFromTray) {
 			cleanup = window.electronAPI.onStopRecordingFromTray(() => {
-				options.stopRecordingRef.current();
+				optionsRef.current.stopRecordingRef.current();
 			});
 		}
 
 		const removeRecordingStateListener = window.electronAPI?.onRecordingStateChanged?.(
 			(state) => {
-				options.setRecording(state.recording);
+				optionsRef.current.setRecording(state.recording);
 			},
 		);
 
 		const removeRecordingInterruptedListener = window.electronAPI?.onRecordingInterrupted?.(
 			(state) => {
 				void (async () => {
-					options.setRecording(false);
-					options.refs.nativeScreenRecording.current = false;
-					await options.cleanupCapturedMedia();
+					const currentOptions = optionsRef.current;
+					currentOptions.setRecording(false);
+					currentOptions.refs.nativeScreenRecording.current = false;
+					await currentOptions.cleanupCapturedMedia();
 					await window.electronAPI.setRecordingState(false);
 
 					if (state.reason !== "window-unavailable") {
 						try {
-							const recoveredPath = await options.recoverNativeRecordingSession();
+							const recoveredPath = await currentOptions.recoverNativeRecordingSession();
 							if (recoveredPath) {
 								return;
 							}
@@ -90,9 +94,9 @@ export function useScreenRecorderLifecycle(options: UseScreenRecorderLifecycleOp
 
 					if (
 						state.reason === "window-unavailable" &&
-						!options.refs.hasPromptedForReselect.current
+						!currentOptions.refs.hasPromptedForReselect.current
 					) {
-						options.refs.hasPromptedForReselect.current = true;
+						currentOptions.refs.hasPromptedForReselect.current = true;
 						alert(state.message);
 						await window.electronAPI.openSourceSelector();
 					} else {
@@ -104,22 +108,23 @@ export function useScreenRecorderLifecycle(options: UseScreenRecorderLifecycleOp
 		);
 
 		return () => {
+			const currentOptions = optionsRef.current;
 			cleanup?.();
 			removeRecordingStateListener?.();
 			removeRecordingInterruptedListener?.();
 
-			if (options.refs.nativeScreenRecording.current) {
-				options.refs.nativeScreenRecording.current = false;
+			if (currentOptions.refs.nativeScreenRecording.current) {
+				currentOptions.refs.nativeScreenRecording.current = false;
 				void window.electronAPI.stopNativeScreenRecording();
 			}
 
-			const recorder = options.refs.mediaRecorder.current;
+			const recorder = currentOptions.refs.mediaRecorder.current;
 			const recorderState = recorder?.state;
 			if (recorder && (recorderState === "recording" || recorderState === "paused")) {
 				recorder.stop();
 			}
 
-			void options.cleanupCapturedMedia();
+			void currentOptions.cleanupCapturedMedia();
 		};
-	}, [options]);
+	}, []);
 }
