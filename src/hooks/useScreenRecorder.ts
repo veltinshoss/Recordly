@@ -33,6 +33,10 @@ const WEBCAM_WIDTH = 1280;
 const WEBCAM_HEIGHT = 720;
 const WEBCAM_FRAME_RATE = 30;
 const WEBCAM_SUFFIX = "-webcam";
+const SOURCE_AUDIO_MUX_TOAST_ID = "recording-audio-mux-warning";
+const MICROPHONE_FALLBACK_TOAST_ID = "recording-microphone-fallback";
+const MICROPHONE_FALLBACK_ERROR_TOAST_ID = "recording-microphone-fallback-error";
+const MICROPHONE_SIDECAR_ERROR_TOAST_ID = "recording-microphone-sidecar-error";
 const LINUX_PORTAL_SOURCE: ProcessedDesktopSource = {
 	id: "screen:linux-portal",
 	name: "Linux Portal",
@@ -75,6 +79,14 @@ type UseScreenRecorderReturn = {
 	countdownDelay: number;
 	setCountdownDelay: (delay: number) => void;
 };
+
+function getErrorMessage(error: unknown) {
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
+
+	return String(error);
+}
 
 export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [recording, setRecording] = useState(false);
@@ -446,9 +458,22 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 			try {
 				const arrayBuffer = await micFallbackBlob.arrayBuffer();
-				await window.electronAPI.storeMicrophoneSidecar(arrayBuffer, finalPath);
+				const result = await window.electronAPI.storeMicrophoneSidecar(arrayBuffer, finalPath);
+				if (!result.success) {
+					const errorMessage =
+						result.error || "Failed to save the fallback microphone audio track";
+					console.warn("Failed to store microphone sidecar:", errorMessage);
+					toast.error(
+						`${errorMessage}. Recording was saved without the fallback microphone track.`,
+						{ id: MICROPHONE_SIDECAR_ERROR_TOAST_ID, duration: 10000 },
+					);
+				}
 			} catch (error) {
 				console.warn("Failed to store microphone sidecar:", error);
+				toast.error(
+					`${getErrorMessage(error)}. Recording was saved without the fallback microphone track.`,
+					{ id: MICROPHONE_SIDECAR_ERROR_TOAST_ID, duration: 10000 },
+				);
 			}
 		},
 		[],
@@ -678,13 +703,24 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						await window.electronAPI.muxNativeWindowsRecording(pauseSegments);
 					if (!muxResult?.success || !muxResult.path) {
 						void logNativeCaptureDiagnostics("mux-native-windows-recording");
-						const failureMessage = await buildNativeCaptureFailureMessage(
-							"mux-native-windows-recording",
+						if (!muxResult?.path) {
+							const failureMessage = await buildNativeCaptureFailureMessage(
+								"mux-native-windows-recording",
+								muxResult?.message ||
+									"Failed to finalize the Windows recording, so the editor was not opened.",
+							);
+							await notifyRecordingFinalizationFailure(failureMessage);
+							return;
+						}
+
+						const warningMessage =
+							muxResult?.error ||
 							muxResult?.message ||
-								"Failed to finalize the Windows recording, so the editor was not opened.",
+							"Failed to finish the native Windows audio mux";
+						toast.warning(
+							`${warningMessage}. Recording was saved, but audio playback or export may be incomplete.`,
+							{ id: SOURCE_AUDIO_MUX_TOAST_ID, duration: 10000 },
 						);
-						await notifyRecordingFinalizationFailure(failureMessage);
-						return;
 					}
 					finalPath = muxResult.path;
 				}
@@ -976,6 +1012,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					// When native mic capture is unavailable (macOS < 14), record mic
 					// via browser getUserMedia so it can be saved as a sidecar file.
 					if (nativeResult.microphoneFallbackRequired && microphoneEnabled) {
+						void logNativeCaptureDiagnostics("start-browser-microphone-fallback");
+						toast.warning(
+							"Native microphone capture is unavailable. Using browser microphone fallback for this recording.",
+							{ id: MICROPHONE_FALLBACK_TOAST_ID, duration: 8000 },
+						);
 						try {
 							const micStream = await navigator.mediaDevices.getUserMedia({
 								audio: microphoneDeviceId
@@ -1005,6 +1046,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							micFallbackRecorder.current = recorder;
 						} catch (micError) {
 							console.warn("Browser microphone fallback failed:", micError);
+							toast.error(
+								`${getErrorMessage(micError)}. Recording will continue without microphone audio.`,
+								{ id: MICROPHONE_FALLBACK_ERROR_TOAST_ID, duration: 10000 },
+							);
 						}
 					}
 
