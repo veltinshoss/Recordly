@@ -1175,6 +1175,8 @@ export default function VideoEditor() {
 				zoomRegions: ZoomRegion[];
 				trimRegions: TrimRegion[];
 				clipRegions: ClipRegion[];
+				autoFullTrackClipId?: string | null;
+				autoFullTrackClipEndMs?: number | null;
 				speedRegions: SpeedRegion[];
 				annotationRegions: AnnotationRegion[];
 				audioRegions: AudioRegion[];
@@ -1298,6 +1300,8 @@ export default function VideoEditor() {
 				zoomRegions,
 				trimRegions,
 				clipRegions,
+				autoFullTrackClipId: autoFullTrackClipIdRef.current,
+				autoFullTrackClipEndMs: autoFullTrackClipEndMsRef.current,
 				speedRegions,
 				annotationRegions,
 				audioRegions,
@@ -1531,6 +1535,8 @@ export default function VideoEditor() {
 			setTrimRegions(normalizedEditor.trimRegions);
 			setClipRegions(normalizedEditor.clipRegions);
 			clipInitializedRef.current = normalizedEditor.clipRegions.length > 0;
+                        autoFullTrackClipIdRef.current = normalizedEditor.autoFullTrackClipId ?? null;
+                        autoFullTrackClipEndMsRef.current = normalizedEditor.autoFullTrackClipEndMs ?? null;
 			setSpeedRegions(normalizedEditor.speedRegions);
 			setAnnotationRegions(normalizedEditor.annotationRegions);
 			setAudioRegions(normalizedEditor.audioRegions);

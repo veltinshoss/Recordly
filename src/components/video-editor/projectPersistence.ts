@@ -98,6 +98,8 @@ export interface ProjectEditorState {
 	zoomRegions: ZoomRegion[];
 	trimRegions: TrimRegion[];
 	clipRegions: ClipRegion[];
+	autoFullTrackClipId?: string | null;
+	autoFullTrackClipEndMs?: number | null;
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
@@ -410,6 +412,12 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 					};
 				})
 		: [];
+
+	const normalizedAutoFullTrackClipId =
+		typeof editor.autoFullTrackClipId === "string" ? editor.autoFullTrackClipId : null;
+	const normalizedAutoFullTrackClipEndMs = isFiniteNumber(editor.autoFullTrackClipEndMs)
+		? Math.round(editor.autoFullTrackClipEndMs)
+		: null;
 
 	const normalizedSpeedRegions: SpeedRegion[] = Array.isArray(editor.speedRegions)
 		? editor.speedRegions
@@ -761,6 +769,8 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		zoomRegions: normalizedZoomRegions,
 		trimRegions: normalizedTrimRegions,
 		clipRegions: normalizedClipRegions,
+		autoFullTrackClipId: normalizedAutoFullTrackClipId,
+		autoFullTrackClipEndMs: normalizedAutoFullTrackClipEndMs,
 		speedRegions: normalizedSpeedRegions,
 		annotationRegions: normalizedAnnotationRegions,
 		audioRegions: normalizedAudioRegions,
