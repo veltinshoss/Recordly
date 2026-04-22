@@ -1845,8 +1845,8 @@ export function SettingsPanel({
 							)}
 							title={
 								padding.linked !== false
-									? tSettings("effects.padding.linked", "Linked (Uniform)")
-									: tSettings("effects.padding.unlinked", "Unlinked (Asymmetrical)")
+									? tSettings("effects.paddingLinked", "Linked (Uniform)")
+									: tSettings("effects.paddingUnlinked", "Unlinked (Asymmetrical)")
 							}
 						>
 							{padding.linked !== false ? (
@@ -1872,7 +1872,7 @@ export function SettingsPanel({
 					) : (
 						<div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
 							<SliderControl
-								label={tSettings("effects.padding.top", "Top")}
+								label={tSettings("effects.paddingTop", "Top")}
 								value={padding.top}
 								defaultValue={DEFAULT_PADDING.top}
 								min={0}
@@ -1883,7 +1883,7 @@ export function SettingsPanel({
 								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
 							/>
 							<SliderControl
-								label={tSettings("effects.padding.bottom", "Bottom")}
+								label={tSettings("effects.paddingBottom", "Bottom")}
 								value={padding.bottom}
 								defaultValue={DEFAULT_PADDING.bottom}
 								min={0}
@@ -1894,7 +1894,7 @@ export function SettingsPanel({
 								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
 							/>
 							<SliderControl
-								label={tSettings("effects.padding.left", "Left")}
+								label={tSettings("effects.paddingLeft", "Left")}
 								value={padding.left}
 								defaultValue={DEFAULT_PADDING.left}
 								min={0}
@@ -1905,7 +1905,7 @@ export function SettingsPanel({
 								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
 							/>
 							<SliderControl
-								label={tSettings("effects.padding.right", "Right")}
+								label={tSettings("effects.paddingRight", "Right")}
 								value={padding.right}
 								defaultValue={DEFAULT_PADDING.right}
 								min={0}
