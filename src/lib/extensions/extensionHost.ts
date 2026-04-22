@@ -444,7 +444,30 @@ export class ExtensionHost {
 			padding: number | { top: number; right: number; bottom: number; left: number };
 		} | null,
 	): void {
-		this._videoLayout = layout;
+		if (!layout) {
+			this._videoLayout = null;
+			return;
+		}
+
+		// Normalize and deep clone padding to exclude UI-only fields like 'linked'
+		const p = layout.padding;
+		const normalizedPadding =
+			typeof p === "number"
+				? p
+				: {
+						top: Number(p.top) || 0,
+						right: Number(p.right) || 0,
+						bottom: Number(p.bottom) || 0,
+						left: Number(p.left) || 0,
+					};
+
+		this._videoLayout = {
+			maskRect: { ...layout.maskRect },
+			canvasWidth: layout.canvasWidth,
+			canvasHeight: layout.canvasHeight,
+			borderRadius: layout.borderRadius,
+			padding: normalizedPadding,
+		};
 	}
 
 	setZoomState(
@@ -841,12 +864,13 @@ export class ExtensionHost {
 
 			getVideoLayout() {
 				if (!host._videoLayout) return null;
+				const p = host._videoLayout.padding;
 				return {
 					maskRect: { ...host._videoLayout.maskRect },
 					canvasWidth: host._videoLayout.canvasWidth,
 					canvasHeight: host._videoLayout.canvasHeight,
 					borderRadius: host._videoLayout.borderRadius,
-					padding: host._videoLayout.padding,
+					padding: typeof p === "number" ? p : { ...p },
 				};
 			},
 

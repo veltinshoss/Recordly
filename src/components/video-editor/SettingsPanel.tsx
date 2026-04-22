@@ -52,6 +52,9 @@ import type {
 	ZoomTransitionEasing,
 } from "./types";
 import {
+	isZeroPadding,
+} from "./videoPlayback/layoutUtils";
+import {
 	DEFAULT_AUTO_CAPTION_SETTINGS,
 	DEFAULT_CROP_REGION,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
@@ -916,7 +919,7 @@ export function SettingsPanel({
 	const [gradient, setGradient] = useState<string>(
 		GRADIENTS.includes(selected) ? selected : GRADIENTS[0],
 	);
-	const removeBackgroundEnabled = aspectRatio === "native" && padding.top === 0 && padding.bottom === 0 && padding.left === 0 && padding.right === 0;
+	const removeBackgroundEnabled = aspectRatio === "native" && isZeroPadding(padding);
 
 	// Device frames from extension system
 	const [availableFrames, setAvailableFrames] = useState<FrameInstance[]>([]);
@@ -1142,11 +1145,15 @@ export function SettingsPanel({
 		const isLinked = padding.linked !== false;
 		const nextLinked = !isLinked;
 		if (nextLinked) {
+			// Compute average for relinking to avoid sudden shifts
+			const avg = Math.round(
+				(padding.top + padding.bottom + padding.left + padding.right) / 4,
+			);
 			onPaddingChange?.({
-				top: padding.top,
-				bottom: padding.top,
-				left: padding.top,
-				right: padding.top,
+				top: avg,
+				bottom: avg,
+				left: avg,
+				right: avg,
 				linked: true,
 			});
 		} else {
@@ -1832,8 +1839,8 @@ export function SettingsPanel({
 							)}
 							title={
 								padding.linked !== false
-									? "Linked (Uniform)"
-									: "Unlinked (Asymmetrical)"
+									? tSettings("effects.padding.linked", "Linked (Uniform)")
+									: tSettings("effects.padding.unlinked", "Unlinked (Asymmetrical)")
 							}
 						>
 							{padding.linked !== false ? (
@@ -1859,7 +1866,7 @@ export function SettingsPanel({
 					) : (
 						<div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
 							<SliderControl
-								label="Top"
+								label={tSettings("effects.padding.top", "Top")}
 								value={padding.top}
 								defaultValue={DEFAULT_PADDING.top}
 								min={0}
@@ -1870,7 +1877,7 @@ export function SettingsPanel({
 								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
 							/>
 							<SliderControl
-								label="Bottom"
+								label={tSettings("effects.padding.bottom", "Bottom")}
 								value={padding.bottom}
 								defaultValue={DEFAULT_PADDING.bottom}
 								min={0}
@@ -1881,7 +1888,7 @@ export function SettingsPanel({
 								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
 							/>
 							<SliderControl
-								label="Left"
+								label={tSettings("effects.padding.left", "Left")}
 								value={padding.left}
 								defaultValue={DEFAULT_PADDING.left}
 								min={0}
@@ -1892,7 +1899,7 @@ export function SettingsPanel({
 								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
 							/>
 							<SliderControl
-								label="Right"
+								label={tSettings("effects.padding.right", "Right")}
 								value={padding.right}
 								defaultValue={DEFAULT_PADDING.right}
 								min={0}
