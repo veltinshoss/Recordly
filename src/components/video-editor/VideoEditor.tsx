@@ -99,6 +99,7 @@ const PhSettings = (props: { className?: string; weight?: "fill" | "regular" }) 
 import { extensionHost } from "@/lib/extensions";
 import { resolveAutoCaptionSourcePath } from "./autoCaptionSource";
 import { CropControl } from "./CropControl";
+import { resolveExportSourcePath } from "./exportSourcePath";
 import { ExportSettingsMenu } from "./ExportSettingsMenu";
 import ExtensionManager from "./ExtensionManager";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
@@ -3657,7 +3658,12 @@ export default function VideoEditor() {
 
 	const handleExport = useCallback(
 		async (settings: ExportSettings) => {
-			if (!videoPath) {
+			const exportVideoSource = resolveExportSourcePath({
+				videoSourcePath,
+				videoPath,
+			});
+
+			if (!exportVideoSource) {
 				toast.error("No video loaded");
 				return;
 			}
@@ -3732,7 +3738,7 @@ export default function VideoEditor() {
 				if (settings.format === "gif" && settings.gifConfig) {
 					// GIF Export
 					const gifExporter = new GifExporter({
-						videoUrl: videoPath,
+						videoUrl: exportVideoSource,
 						width: settings.gifConfig.width,
 						height: settings.gifConfig.height,
 						frameRate: settings.gifConfig.frameRate,
@@ -3896,7 +3902,7 @@ export default function VideoEditor() {
 					);
 
 					const exporterConfig = {
-						videoUrl: videoPath,
+						videoUrl: exportVideoSource,
 						width: exportWidth,
 						height: exportHeight,
 						frameRate: selectedMp4FrameRate,
@@ -4118,6 +4124,7 @@ export default function VideoEditor() {
 		[
 			clearPendingExportSave,
 			videoPath,
+			videoSourcePath,
 			wallpaper,
 			trimRegions,
 			shadowIntensity,
