@@ -480,7 +480,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 			try {
 				const arrayBuffer = await micFallbackBlob.arrayBuffer();
-				const result = await window.electronAPI.storeMicrophoneSidecar(arrayBuffer, finalPath);
+				const result = await window.electronAPI.storeMicrophoneSidecar(
+					arrayBuffer,
+					finalPath,
+				);
 				if (!result.success) {
 					const errorMessage =
 						result.error || "Failed to save the fallback microphone audio track";

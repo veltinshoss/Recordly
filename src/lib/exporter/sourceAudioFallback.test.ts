@@ -22,10 +22,7 @@ describe("resolveSourceAudioFallbackPaths", () => {
 			]),
 		).toEqual({
 			hasEmbeddedSourceAudio: false,
-			externalAudioPaths: [
-				"/tmp/recording.system.wav",
-				"/tmp/recording.mic.wav",
-			],
+			externalAudioPaths: ["/tmp/recording.system.wav", "/tmp/recording.mic.wav"],
 		});
 	});
 

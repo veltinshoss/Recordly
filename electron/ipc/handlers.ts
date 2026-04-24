@@ -1,26 +1,26 @@
 import { BrowserWindow } from "electron";
+import { registerAssetHandlers } from "./register/assets";
+import { registerCaptionHandlers } from "./register/captions";
+import { registerExportHandlers } from "./register/export";
+import { registerPermissionHandlers } from "./register/permissions";
+import { registerProjectHandlers } from "./register/project";
+import { registerRecordingHandlers } from "./register/recording";
+import { registerSettingsHandlers } from "./register/settings";
+import { registerSourceHandlers } from "./register/sources";
 import {
-	windowsCaptureProcess,
-	setWindowsCaptureProcess,
-	setWindowsCaptureTargetPath,
-	setWindowsNativeCaptureActive,
+	selectedSource,
 	setNativeScreenRecordingActive,
-	setWindowsCaptureStopRequested,
 	setWindowsCapturePaused,
-	setWindowsSystemAudioPath,
+	setWindowsCaptureProcess,
+	setWindowsCaptureStopRequested,
+	setWindowsCaptureTargetPath,
 	setWindowsMicAudioPath,
+	setWindowsNativeCaptureActive,
 	setWindowsOrphanedMicAudioPath,
 	setWindowsPendingVideoPath,
-	selectedSource,
+	setWindowsSystemAudioPath,
+	windowsCaptureProcess,
 } from "./state";
-import { registerSourceHandlers } from "./register/sources";
-import { registerRecordingHandlers } from "./register/recording";
-import { registerPermissionHandlers } from "./register/permissions";
-import { registerAssetHandlers } from "./register/assets";
-import { registerExportHandlers } from "./register/export";
-import { registerCaptionHandlers } from "./register/captions";
-import { registerProjectHandlers } from "./register/project";
-import { registerSettingsHandlers } from "./register/settings";
 
 export { cleanupNativeVideoExportSessions } from "./export/native-video";
 
@@ -56,7 +56,11 @@ export function registerIpcHandlers(
 	getSourceSelectorWindow: () => BrowserWindow | null,
 	onRecordingStateChange?: (recording: boolean, sourceName: string) => void,
 ) {
-	registerSourceHandlers({ createEditorWindow, createSourceSelectorWindow, getSourceSelectorWindow });
+	registerSourceHandlers({
+		createEditorWindow,
+		createSourceSelectorWindow,
+		getSourceSelectorWindow,
+	});
 	registerRecordingHandlers(onRecordingStateChange);
 	registerPermissionHandlers();
 	registerAssetHandlers();
