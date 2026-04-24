@@ -38,6 +38,8 @@ import {
 	setWindowsSystemAudioPath,
 	windowsMicAudioPath,
 	setWindowsMicAudioPath,
+	windowsOrphanedMicAudioPath,
+	setWindowsOrphanedMicAudioPath,
 	windowsPendingVideoPath,
 	setWindowsPendingVideoPath,
 	lastNativeCaptureDiagnostics,
@@ -162,6 +164,14 @@ function normalizeDesktopSourceName(value: string) {
 	return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+async function cleanupWindowsOrphanedMicAudioPath(filePath: string | null) {
+	if (!filePath) {
+		return;
+	}
+
+	await fs.rm(filePath, { force: true }).catch(() => undefined);
+}
+
 export function registerRecordingHandlers(
 	onRecordingStateChange?: (recording: boolean, sourceName: string) => void,
 ) {
@@ -193,12 +203,14 @@ export function registerRecordingHandlers(
         let captureOutput = ''
         let systemAudioPath: string | null = null
         let microphonePath: string | null = null
+        let orphanedMicAudioPath: string | null = null
         const resolvedDisplay = resolveWindowsCaptureDisplay(
           source,
           getScreen().getAllDisplays(),
           getScreen().getPrimaryDisplay(),
         )
         const displayBounds = resolvedDisplay.bounds
+        setWindowsOrphanedMicAudioPath(null)
 
         const config: Record<string, unknown> = {
           outputPath,
@@ -267,6 +279,8 @@ export function registerRecordingHandlers(
           options,
         )
         if (microphoneFallbackRequired) {
+          orphanedMicAudioPath = microphonePath
+          setWindowsOrphanedMicAudioPath(orphanedMicAudioPath)
           microphonePath = null
           setWindowsMicAudioPath(null)
         }
@@ -562,6 +576,7 @@ export function registerRecordingHandlers(
 
         const proc = windowsCaptureProcess
         const preferredVideoPath = windowsCaptureTargetPath
+        const preferredOrphanedMicAudioPath = windowsOrphanedMicAudioPath
         setWindowsCaptureStopRequested(true)
         proc.stdin.write('stop\n')
         const tempVideoPath = await waitForWindowsCaptureStop(proc)
@@ -578,6 +593,8 @@ export function registerRecordingHandlers(
         setWindowsCaptureTargetPath(null)
         setWindowsCaptureStopRequested(false)
         setWindowsCapturePaused(false)
+        setWindowsOrphanedMicAudioPath(null)
+        await cleanupWindowsOrphanedMicAudioPath(preferredOrphanedMicAudioPath)
         setWindowsPendingVideoPath(finalVideoPath)
         recordNativeCaptureDiagnostics({
           backend: 'windows-wgc',
@@ -592,6 +609,7 @@ export function registerRecordingHandlers(
       } catch (error) {
         console.error('Failed to stop native Windows capture:', error)
         const fallbackPath = windowsCaptureTargetPath
+        const fallbackOrphanedMicAudioPath = windowsOrphanedMicAudioPath
         setWindowsNativeCaptureActive(false)
         setNativeScreenRecordingActive(false)
         setWindowsCaptureProcess(null)
@@ -600,7 +618,9 @@ export function registerRecordingHandlers(
         setWindowsCapturePaused(false)
         setWindowsSystemAudioPath(null)
         setWindowsMicAudioPath(null)
+        setWindowsOrphanedMicAudioPath(null)
         setWindowsPendingVideoPath(null)
+        await cleanupWindowsOrphanedMicAudioPath(fallbackOrphanedMicAudioPath)
 
         if (fallbackPath) {
           try {
@@ -897,7 +917,9 @@ export function registerRecordingHandlers(
 
   ipcMain.handle('mux-native-windows-recording', async (_event, pauseSegments?: PauseSegment[]) => {
     const videoPath = windowsPendingVideoPath
+    const orphanedMicAudioPath = windowsOrphanedMicAudioPath
     setWindowsPendingVideoPath(null)
+    setWindowsOrphanedMicAudioPath(null)
 
     if (!videoPath) {
       return { success: false, message: 'No native Windows video pending for mux' }
@@ -916,6 +938,7 @@ export function registerRecordingHandlers(
         outputPath: videoPath,
         fileSizeBytes: await getFileSizeIfPresent(videoPath),
       })
+      await cleanupWindowsOrphanedMicAudioPath(orphanedMicAudioPath)
       return await finalizeStoredVideo(videoPath)
     } catch (error) {
       console.error('Failed to mux native Windows recording:', error)
@@ -930,10 +953,11 @@ export function registerRecordingHandlers(
       })
       setWindowsSystemAudioPath(null)
       setWindowsMicAudioPath(null)
-      return {
-        success: false,
-        message: 'Failed to finalize native Windows recording',
-        error: String(error),
+      await cleanupWindowsOrphanedMicAudioPath(orphanedMicAudioPath)
+      try {
+        return await finalizeStoredVideo(videoPath)
+      } catch {
+        return { success: false, message: 'Failed to mux native Windows recording', error: String(error) }
       }
     }
   })

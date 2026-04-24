@@ -44,6 +44,7 @@ export let windowsCaptureStopRequested = false;
 export let windowsCapturePaused = false;
 export let windowsSystemAudioPath: string | null = null;
 export let windowsMicAudioPath: string | null = null;
+export let windowsOrphanedMicAudioPath: string | null = null;
 export let windowsPendingVideoPath: string | null = null;
 
 // ── Diagnostics ───────────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ export function setWindowsCaptureStopRequested(v: boolean) { windowsCaptureStopR
 export function setWindowsCapturePaused(v: boolean) { windowsCapturePaused = v; }
 export function setWindowsSystemAudioPath(v: string | null) { windowsSystemAudioPath = v; }
 export function setWindowsMicAudioPath(v: string | null) { windowsMicAudioPath = v; }
+export function setWindowsOrphanedMicAudioPath(v: string | null) { windowsOrphanedMicAudioPath = v; }
 export function setWindowsPendingVideoPath(v: string | null) { windowsPendingVideoPath = v; }
 
 export function setLastNativeCaptureDiagnostics(v: NativeCaptureDiagnostics | null) { lastNativeCaptureDiagnostics = v; }

@@ -9,6 +9,7 @@ import {
 	setWindowsCapturePaused,
 	setWindowsSystemAudioPath,
 	setWindowsMicAudioPath,
+	setWindowsOrphanedMicAudioPath,
 	setWindowsPendingVideoPath,
 	selectedSource,
 } from "./state";
@@ -43,6 +44,7 @@ export function killWindowsCaptureProcess() {
 		setWindowsCapturePaused(false);
 		setWindowsSystemAudioPath(null);
 		setWindowsMicAudioPath(null);
+		setWindowsOrphanedMicAudioPath(null);
 		setWindowsPendingVideoPath(null);
 	}
 }
