@@ -63,6 +63,7 @@ import {
 	VideoExporter,
 } from "@/lib/exporter";
 import { resolveMediaElementSource } from "@/lib/exporter/localMediaSource";
+import { extensionHost } from "@/lib/extensions";
 import {
 	clampMediaTimeToDuration,
 	estimateCompanionAudioStartDelaySeconds,
@@ -75,31 +76,10 @@ import {
 	getAspectRatioLabel,
 	getAspectRatioValue,
 } from "@/utils/aspectRatioUtils";
-import { ExtensionIcon } from "./ExtensionIcon";
-
-const PhCursorFill = (props: { className?: string; weight?: "fill" | "regular" }) => (
-	<Cursor weight="fill" className={props.className} />
-);
-const PhCamera = (props: { className?: string; weight?: "fill" | "regular" }) => (
-	<PhCameraRegular weight={props.weight ?? "regular"} className={props.className} />
-);
-const PhCaptions = (props: { className?: string; weight?: "fill" | "regular" }) => (
-	<ClosedCaptioning weight={props.weight ?? "regular"} className={props.className} />
-);
-const PhPuzzle = (props: { className?: string; weight?: "fill" | "regular" }) => (
-	<PuzzlePiece weight={props.weight ?? "regular"} className={props.className} />
-);
-const PhSparkle = (props: { className?: string; weight?: "fill" | "regular" }) => (
-	<Sparkle weight={props.weight ?? "regular"} className={props.className} />
-);
-const PhSettings = (props: { className?: string; weight?: "fill" | "regular" }) => (
-	<Gear weight={props.weight ?? "regular"} className={props.className} />
-);
-
-import { extensionHost } from "@/lib/extensions";
 import { resolveAutoCaptionSourcePath } from "./autoCaptionSource";
 import { CropControl } from "./CropControl";
 import { ExportSettingsMenu } from "./ExportSettingsMenu";
+import { ExtensionIcon } from "./ExtensionIcon";
 import ExtensionManager from "./ExtensionManager";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import ProjectBrowserDialog, { type ProjectLibraryEntry } from "./ProjectBrowserDialog";
@@ -156,6 +136,7 @@ import {
 	type EditorEffectSection,
 	type FigureData,
 	getClipSourceEndMs,
+	type Padding,
 	type PlaybackSpeed,
 	type SpeedRegion,
 	type TrimRegion,
@@ -171,6 +152,25 @@ import {
 	buildLoopedCursorTelemetry,
 	getDisplayedTimelineWindowMs,
 } from "./videoPlayback/cursorLoopTelemetry";
+
+const PhCursorFill = (props: { className?: string; weight?: "fill" | "regular" }) => (
+	<Cursor weight="fill" className={props.className} />
+);
+const PhCamera = (props: { className?: string; weight?: "fill" | "regular" }) => (
+	<PhCameraRegular weight={props.weight ?? "regular"} className={props.className} />
+);
+const PhCaptions = (props: { className?: string; weight?: "fill" | "regular" }) => (
+	<ClosedCaptioning weight={props.weight ?? "regular"} className={props.className} />
+);
+const PhPuzzle = (props: { className?: string; weight?: "fill" | "regular" }) => (
+	<PuzzlePiece weight={props.weight ?? "regular"} className={props.className} />
+);
+const PhSparkle = (props: { className?: string; weight?: "fill" | "regular" }) => (
+	<Sparkle weight={props.weight ?? "regular"} className={props.className} />
+);
+const PhSettings = (props: { className?: string; weight?: "fill" | "regular" }) => (
+	<Gear weight={props.weight ?? "regular"} className={props.className} />
+);
 
 type EditorHistorySnapshot = {
 	zoomRegions: ZoomRegion[];
@@ -750,7 +750,9 @@ export default function VideoEditor() {
 		}
 		context.imageSmoothingEnabled = true;
 		context.imageSmoothingQuality = "high";
-		const editorBgHsl = getComputedStyle(document.documentElement).getPropertyValue("--editor-bg").trim();
+		const editorBgHsl = getComputedStyle(document.documentElement)
+			.getPropertyValue("--editor-bg")
+			.trim();
 		context.fillStyle = editorBgHsl ? `hsl(${editorBgHsl})` : "#111113";
 		context.fillRect(0, 0, targetWidth, targetHeight);
 
@@ -786,7 +788,9 @@ export default function VideoEditor() {
 					padding,
 					cropRegion,
 					webcam,
-					webcamUrl: resolvedWebcamVideoUrl ?? (webcam.sourcePath ? toFileUrl(webcam.sourcePath) : null),
+					webcamUrl:
+						resolvedWebcamVideoUrl ??
+						(webcam.sourcePath ? toFileUrl(webcam.sourcePath) : null),
 					videoWidth: previewVideo.videoWidth,
 					videoHeight: previewVideo.videoHeight,
 					annotationRegions,
@@ -1170,7 +1174,7 @@ export default function VideoEditor() {
 				cursorClickBounceDuration: number;
 				cursorSway: number;
 				borderRadius: number;
-				padding: number;
+				padding: Padding;
 				frame: string | null;
 				cropRegion: CropRegion;
 				webcam: WebcamOverlaySettings;
@@ -1196,8 +1200,7 @@ export default function VideoEditor() {
 				gifSizePreset: GifSizePreset;
 			}>,
 		) => {
-			const { cropRegion: _cropRegion, ...persistedEditor } = editor;
-			return persistedEditor;
+			return editor;
 		},
 		[],
 	);
@@ -1531,14 +1534,14 @@ export default function VideoEditor() {
 			setBorderRadius(normalizedEditor.borderRadius);
 			setPadding(normalizedEditor.padding);
 			setFrame(normalizedEditor.frame);
-			setCropRegion(DEFAULT_CROP_REGION);
+			setCropRegion(normalizedEditor.cropRegion);
 			setWebcam(normalizedEditor.webcam);
 			setZoomRegions(normalizedEditor.zoomRegions);
 			setTrimRegions(normalizedEditor.trimRegions);
 			setClipRegions(normalizedEditor.clipRegions);
 			clipInitializedRef.current = normalizedEditor.clipRegions.length > 0;
-                        autoFullTrackClipIdRef.current = normalizedEditor.autoFullTrackClipId ?? null;
-                        autoFullTrackClipEndMsRef.current = normalizedEditor.autoFullTrackClipEndMs ?? null;
+			autoFullTrackClipIdRef.current = normalizedEditor.autoFullTrackClipId ?? null;
+			autoFullTrackClipEndMsRef.current = normalizedEditor.autoFullTrackClipEndMs ?? null;
 			setSpeedRegions(normalizedEditor.speedRegions);
 			setAnnotationRegions(normalizedEditor.annotationRegions);
 			setAudioRegions(normalizedEditor.audioRegions);
@@ -2139,7 +2142,7 @@ export default function VideoEditor() {
 								currentSourcePath,
 								currentPersistedEditorState,
 								lastSavedSnapshot?.projectId ?? null,
-						  );
+							);
 
 				const fileNameBase =
 					currentSourcePath
@@ -2254,7 +2257,7 @@ export default function VideoEditor() {
 								currentSourcePath,
 								currentPersistedEditorState,
 								lastSavedSnapshot?.projectId ?? null,
-						  );
+							);
 				const thumbnailDataUrl = await captureProjectThumbnail();
 				const result = await window.electronAPI.saveProjectFileNamed(
 					projectData,
@@ -2938,7 +2941,9 @@ export default function VideoEditor() {
 					regions.filter(
 						(region) =>
 							!removedSegments.some(
-								(segment) => region.startMs < segment.endMs && region.endMs > segment.startMs,
+								(segment) =>
+									region.startMs < segment.endMs &&
+									region.endMs > segment.startMs,
 							),
 					);
 				setZoomRegions((prev) => removeTrimmedRegions(prev));
@@ -3767,7 +3772,9 @@ export default function VideoEditor() {
 						videoPadding: padding,
 						cropRegion,
 						webcam,
-						webcamUrl: resolvedWebcamVideoUrl ?? (webcam.sourcePath ? toFileUrl(webcam.sourcePath) : null),
+						webcamUrl:
+							resolvedWebcamVideoUrl ??
+							(webcam.sourcePath ? toFileUrl(webcam.sourcePath) : null),
 						annotationRegions,
 						autoCaptions,
 						autoCaptionSettings,
@@ -3936,7 +3943,9 @@ export default function VideoEditor() {
 						padding,
 						cropRegion,
 						webcam,
-						webcamUrl: resolvedWebcamVideoUrl ?? (webcam.sourcePath ? toFileUrl(webcam.sourcePath) : null),
+						webcamUrl:
+							resolvedWebcamVideoUrl ??
+							(webcam.sourcePath ? toFileUrl(webcam.sourcePath) : null),
 						annotationRegions,
 						autoCaptions,
 						autoCaptionSettings,
@@ -4690,7 +4699,10 @@ export default function VideoEditor() {
 									</p>
 									{isRenderingAudio ? (
 										<p className="mt-1 text-[11px] text-muted-foreground/70">
-											{t("editor.export.processingAudioEdits", "Processing audio with speed/overlay edits")}
+											{t(
+												"editor.export.processingAudioEdits",
+												"Processing audio with speed/overlay edits",
+											)}
 										</p>
 									) : exportRenderSpeedLabel ? (
 										<p className="mt-1 text-[11px] text-muted-foreground/70">
@@ -5239,7 +5251,8 @@ export default function VideoEditor() {
 													audioRegions.length > 0
 														? Math.max(
 																...audioRegions.map(
-																	(region) => region.trackIndex ?? 0,
+																	(region) =>
+																		region.trackIndex ?? 0,
 																),
 															) + 1
 														: 0;

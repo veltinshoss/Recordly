@@ -1,27 +1,25 @@
 import {
 	AppWindow,
-	ArrowCircleUp as ArrowUpCircle,
-	ArrowClockwise as RefreshCw,
 	CaretUp as ChevronUp,
-	CheckCircle as CheckCircle2,
-	DotsThreeVertical as MoreVertical,
 	Eye,
 	EyeSlash as EyeOff,
 	FolderOpen,
+	Translate as Languages,
 	Microphone as Mic,
 	MicrophoneSlash as MicOff,
 	Minus,
 	Monitor,
+	DotsThreeVertical as MoreVertical,
 	Pause,
 	Play,
-	SpeakerHigh as Volume2,
-	SpeakerX as VolumeX,
+	ArrowClockwise as RefreshCw,
 	Stop as Square,
 	Timer,
-	Translate as Languages,
 	VideoCamera as Video,
 	VideoCamera as VideoIcon,
 	VideoCameraSlash as VideoOff,
+	SpeakerHigh as Volume2,
+	SpeakerX as VolumeX,
 	X,
 } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
@@ -157,6 +155,7 @@ export function LaunchWindow() {
 	const {
 		recording,
 		paused,
+		finalizing,
 		countdownActive,
 		toggleRecording,
 		pauseRecording,
@@ -197,24 +196,6 @@ export function LaunchWindow() {
 	const [recordingHudOffset, setRecordingHudOffset] = useState(DEFAULT_RECORDING_HUD_OFFSET);
 	const [platform, setPlatform] = useState<string | null>(null);
 	const [appVersion, setAppVersion] = useState<string | null>(null);
-	const [updateStatus, setUpdateStatus] = useState<{
-		status:
-			| "idle"
-			| "checking"
-			| "up-to-date"
-			| "available"
-			| "downloading"
-			| "ready"
-			| "error";
-		currentVersion: string;
-		availableVersion: string | null;
-		detail?: string;
-	}>({
-		status: "idle",
-		currentVersion: "",
-		availableVersion: null,
-	});
-	const [updateActionPending, setUpdateActionPending] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const hudContentRef = useRef<HTMLDivElement>(null);
 	const hudBarRef = useRef<HTMLDivElement>(null);
@@ -662,31 +643,6 @@ export function LaunchWindow() {
 	}, [preparePermissions]);
 
 	useEffect(() => {
-		let mounted = true;
-
-		const refreshUpdateStatus = async () => {
-			try {
-				const summary = await window.electronAPI.getUpdateStatusSummary();
-				if (mounted) {
-					setUpdateStatus(summary);
-				}
-			} catch (error) {
-				console.error("Failed to load update status summary:", error);
-			}
-		};
-
-		void refreshUpdateStatus();
-		const pollTimer = window.setInterval(() => {
-			void refreshUpdateStatus();
-		}, 2500);
-
-		return () => {
-			mounted = false;
-			window.clearInterval(pollTimer);
-		};
-	}, []);
-
-	useEffect(() => {
 		let cancelled = false;
 		const loadVersion = async () => {
 			try {
@@ -956,74 +912,6 @@ export function LaunchWindow() {
 		toggleDropdown("webcam");
 	};
 
-	const updateButtonLabel =
-		updateStatus.status === "up-to-date"
-			? t("recording.update.updated")
-			: t("recording.update.update");
-	const updateButtonTitle = (() => {
-		switch (updateStatus.status) {
-			case "up-to-date":
-				return t("recording.update.upToDateTitle", "Recordly {{version}} is up to date.", {
-					version: updateStatus.currentVersion,
-				});
-			case "available":
-			case "ready":
-				return updateStatus.availableVersion
-					? t("recording.update.availableTitle", "Recordly {{version}} is available.", {
-							version: updateStatus.availableVersion,
-						})
-					: t("recording.update.availableGenericTitle");
-			case "downloading":
-				return updateStatus.detail ?? t("recording.update.downloadingTitle");
-			case "checking":
-				return t("recording.update.checkingTitle");
-			case "error":
-				return updateStatus.detail ?? t("recording.update.errorTitle");
-			default:
-				return t("recording.update.idleTitle");
-		}
-	})();
-	const updateButtonClassName = `${styles.updateBadge} ${updateStatus.status === "up-to-date" ? styles.updateBadgeQuiet : styles.updateBadgeHot} ${styles.electronNoDrag}`;
-	const updateButtonIcon = (() => {
-		switch (updateStatus.status) {
-			case "up-to-date":
-				return <CheckCircle2 size={14} />;
-			case "checking":
-			case "downloading":
-				return <RefreshCw size={14} className={styles.updateBadgeSpin} />;
-			default:
-				return <ArrowUpCircle size={14} />;
-		}
-	})();
-
-	const handleUpdateButtonClick = async () => {
-		if (updateActionPending || updateStatus.status === "downloading") {
-			return;
-		}
-
-		setUpdateActionPending(true);
-		try {
-			switch (updateStatus.status) {
-				case "available":
-					await window.electronAPI.downloadAvailableUpdate();
-					break;
-				case "ready":
-					await window.electronAPI.installDownloadedUpdate();
-					break;
-				default:
-					await window.electronAPI.checkForAppUpdates();
-					break;
-			}
-
-			const summary = await window.electronAPI.getUpdateStatusSummary();
-			setUpdateStatus(summary);
-		} catch (error) {
-			console.error("Failed to handle update button action:", error);
-		} finally {
-			setUpdateActionPending(false);
-		}
-	};
-
 	const recordingControls = (
 		<>
 			<div className="flex items-center gap-[5px]">
@@ -1089,6 +977,25 @@ export function LaunchWindow() {
 				<X size={18} />
 			</IconButton>
 		</>
+	);
+
+	const finalizingControls = (
+		<div className="flex items-center gap-3 pr-2 text-[#eeeef2]">
+			<div className={styles.finalizingBadge}>
+				<RefreshCw size={14} className={styles.finalizingSpinner} />
+			</div>
+			<div className="flex flex-col leading-tight">
+				<span className="text-[12px] font-semibold tracking-[0.01em]">
+					{t("recording.preparing", "Preparing recording...")}
+				</span>
+				<span className="text-[10px] text-[#9aa7bd]">
+					{t(
+						"recording.preparingSubtitle",
+						"Recordly will open the editor when it is ready.",
+					)}
+				</span>
+			</div>
+		</div>
 	);
 
 	const idleControls = (
@@ -1184,6 +1091,8 @@ export function LaunchWindow() {
 			</IconButton>
 		</>
 	);
+
+	const hudMode = finalizing ? "finalizing" : recording ? "recording" : "idle";
 
 	return (
 		<div
@@ -1573,23 +1482,10 @@ export function LaunchWindow() {
 								<RxDragHandleDots2 size={14} className="text-[#6b6b78]" />
 							</div>
 
-							<button
-								type="button"
-								onClick={() => {
-									void handleUpdateButtonClick();
-								}}
-								className={updateButtonClassName}
-								title={updateButtonTitle}
-								disabled={updateActionPending}
-							>
-								{updateButtonIcon}
-								<span>{updateButtonLabel}</span>
-							</button>
-
 							<div className={styles.barStateViewport}>
 								<AnimatePresence initial={false} mode="wait">
 									<motion.div
-										key={recording ? "recording" : "idle"}
+										key={hudMode}
 										layout={!showRecordingWebcamPreview}
 										className={styles.barState}
 										initial={{
@@ -1612,7 +1508,11 @@ export function LaunchWindow() {
 										}}
 										transition={hudStateTransition}
 									>
-										{recording ? recordingControls : idleControls}
+										{hudMode === "recording"
+											? recordingControls
+											: hudMode === "finalizing"
+												? finalizingControls
+												: idleControls}
 									</motion.div>
 								</AnimatePresence>
 							</div>

@@ -1,4 +1,4 @@
-import { Link, LinkBreak, Palette, Trash as Trash2, UploadSimple as Upload, X } from "@phosphor-icons/react";
+import { Palette, Trash as Trash2, UploadSimple as Upload, X } from "@phosphor-icons/react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -1838,23 +1838,15 @@ export function SettingsPanel({
 						<button
 							type="button"
 							onClick={togglePaddingLink}
-							className={cn(
-								"p-1 rounded-md transition-colors",
-								padding.linked !== false
-									? "text-[#2563EB] bg-[#2563EB]/10"
-									: "text-muted-foreground hover:bg-foreground/[0.05]",
-							)}
+							aria-pressed={padding.linked === false}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
 							title={
-								padding.linked !== false
-									? tSettings("effects.paddingLinked", "Linked (Uniform)")
-									: tSettings("effects.paddingUnlinked", "Unlinked (Asymmetrical)")
+								padding.linked === false
+									? tSettings("effects.paddingAdvancedHide", "Hide advanced padding controls")
+									: tSettings("effects.paddingAdvancedShow", "Show advanced padding controls")
 							}
 						>
-							{padding.linked !== false ? (
-								<Link size={12} weight="bold" />
-							) : (
-								<LinkBreak size={12} weight="bold" />
-							)}
+							{tSettings("effects.paddingAdvanced", "Advanced")}
 						</button>
 					</div>
 
