@@ -1,5 +1,12 @@
 import type { AudioSyncAdjustment, PauseSegment } from "../types";
 
+// When the audio file is significantly shorter than the video, prepending
+// leading silence equal to the full duration delta (the `delay` branch) is
+// reasonable for small deltas but becomes very jarring at tens of seconds:
+// the user hears a long silence before audio cuts in mid-clip. Above this
+// cap, anchor audio at the start and pad trailing silence instead.
+const MAX_AUDIO_SYNC_DELAY_MS = 15000;
+
 export function buildAtempoFilters(tempoRatio: number): string[] {
 	if (!Number.isFinite(tempoRatio) || tempoRatio <= 0) {
 		return [];
@@ -58,6 +65,10 @@ export function getAudioSyncAdjustment(
 		return { mode: "tempo", delayMs: 0, tempoRatio, durationDeltaMs };
 	}
 
+	if (durationDeltaMs > MAX_AUDIO_SYNC_DELAY_MS) {
+		return { mode: "pad", delayMs: 0, tempoRatio: 1, durationDeltaMs };
+	}
+
 	return { mode: "delay", delayMs: durationDeltaMs, tempoRatio: 1, durationDeltaMs };
 }
 
@@ -75,6 +86,10 @@ export function appendSyncedAudioFilter(
 
 	if (adjustment.mode === "tempo") {
 		filters.push(...buildAtempoFilters(adjustment.tempoRatio));
+	}
+
+	if (adjustment.mode === "pad" && adjustment.durationDeltaMs > 0) {
+		filters.push(`apad=pad_dur=${(adjustment.durationDeltaMs / 1000).toFixed(3)}`);
 	}
 
 	filters.push("aresample=async=1:first_pts=0", "asetpts=PTS-STARTPTS");
