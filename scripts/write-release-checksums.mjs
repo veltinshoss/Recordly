@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const projectRoot = process.cwd();
@@ -29,7 +29,13 @@ function isReleaseArtifact(fileName) {
 }
 
 function sha256(filePath) {
-	return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+	return new Promise((resolve, reject) => {
+		const hash = createHash("sha256");
+		createReadStream(filePath)
+			.on("error", reject)
+			.on("data", (chunk) => hash.update(chunk))
+			.on("end", () => resolve(hash.digest("hex")));
+	});
 }
 
 if (!existsSync(releaseRoot)) {
@@ -46,9 +52,10 @@ if (releaseArtifacts.length === 0) {
 	throw new Error("[release-checksums] no release artifacts found");
 }
 
-const checksums = releaseArtifacts.map((filePath) => {
-	return `${sha256(filePath)}  ${artifactSubjectName(filePath)}`;
-});
+const checksums = [];
+for (const filePath of releaseArtifacts) {
+	checksums.push(`${await sha256(filePath)}  ${artifactSubjectName(filePath)}`);
+}
 
 writeFileSync(outputPath, `${checksums.join("\n")}\n`);
 console.log(`[release-checksums] wrote ${relativePath(outputPath)}`);

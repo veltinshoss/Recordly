@@ -132,6 +132,7 @@ jobs:
           path: |
             release/**/*.dmg
             release/**/*.zip
+            release/**/*.blockmap
             release/latest-mac.yml
             release/SHA256SUMS*.txt
           if-no-files-found: error
@@ -193,6 +194,7 @@ jobs:
           name: recordly-linux-${{ github.sha }}
           path: |
             release/**/*.AppImage
+            release/**/*.blockmap
             release/latest-linux.yml
             release/SHA256SUMS*.txt
           if-no-files-found: error
